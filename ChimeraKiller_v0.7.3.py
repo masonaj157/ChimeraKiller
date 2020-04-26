@@ -8,7 +8,8 @@
 # (3) samtools
 # (4) bedtools
 # (5) picard
-# (6) bam-read from transrate
+# (6) pysam
+# (7) pathos
 import time
 start = time.time()
 
