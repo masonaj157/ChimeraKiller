@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ChimeraSorter was made as a followup to ChimeraChecker. It uses several filters to identify and sort filters into good and bad. If you have questions about this script, send a postcard with your information and question addressed to My Ass, You're Screwed Blvd., Imalone, WI 54848
+# ChimeraSorter was made as a followup to ChimeraChecker. It uses several filters to identify and sort filters into good and bad.
 
 # Additional software necessary to run this:
 # (1) bwa 
