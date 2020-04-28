@@ -416,7 +416,7 @@ print(("Generating bwa alignment: " + name + ".bam"))
 command = bwa + " index " + input.name
 subprocess.call(command,shell=True)
 # Generate the initial sam alignment
-command = bwa + " mem -M -t 4 -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
+command = bwa + " mem -M -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
 subprocess.call(command,shell=True)
 # Create a sorted bam file
 command = picard + " SortSam INPUT=tmp1.sam OUTPUT=tmp2.bam SORT_ORDER=coordinate USE_JDK_DEFLATER=true USE_JDK_INFLATER=true" 
