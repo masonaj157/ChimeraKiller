@@ -125,23 +125,23 @@ merSize=args.merSize
 procs=args.processes
 
 
-#input=open("Bnigr-CLP1856_CDS_testing.fasta","r")
-#mismatches=0
-#bwa="bwa"
-#reads=open("Bnigr-CLP1856_M.assembled.fastq.gz","r")
-#picard="picard"
-#samtools="samtools"
-#bedtools="bedtools"
-#tooShort=150
-#mapQuality=0
-#minRead=150
-#maxRead=1000
-#gatk="gatk"
-#readDifference=0.75
-#merSize=100
-#procs=4
+input=open("Bnigr-CLP1856_CDS_testing.fasta","r")
+mismatches=0
+bwa="bwa"
+reads=open("Bnigr-CLP1856_M.assembled.fastq.gz","r")
+picard="picard"
+samtools="samtools"
+bedtools="bedtools"
+tooShort=150
+mapQuality=0
+minRead=150
+maxRead=1000
+gatk="gatk"
+readDifference=0.75
+merSize=100
+procs=8
 
-p = mp.Pool(procs)
+
 
 # Check the input fasta file and output the number of detected sequences.
 totalContigs = 0
@@ -231,33 +231,6 @@ def SampleReads(transcript_name, transcript_dict, sample_number) :
 	return(sampled_reads)
 	
 	
-	
-## Function to calculate the average read length in a set of reads
-#def AverageReadLen(reads) :
-#	lengths = []
-#	for read in reads:
-#		lengths.append(len(read.seq))
-#	mean = sum(lengths)/len(reads)
-#	return(mean)
-
-
-
-## Function to calculate the probability that the lowest frequency kmer occurred randomly
-## As a result of a draw from a poisson distribution with rate and determined by assuming 
-## equal probability of each kmer in a sequence occurring in a randomly drawn read mapping to the sequence
-#def PoissonProbKmer(transcript_seq,kmer_min,kmer_len,reads) :
-#	len_transcript = float(len(transcript_seq))
-#	ave_read_len = float(AverageReadLen(reads))
-#	ave_kmer_prob = (1.0 / (len_transcript - (ave_read_len - 1.0 ))) * (ave_read_len - (kmer_len - 1.0 )) 
-#	events = ave_kmer_prob * 1.1 ** len(reads)
-#	mu = (events / len(reads)) * (len(reads)) # I recognize this is redundant 
-#	rate = ave_kmer_prob #should be frequency times number of reads divided by reads so reads cancels out
-#	pois = stats.poisson.cdf(kmer_min, ave_kmer_prob)
-#	prob = pois
-#	prob_mod = pois / math.log(len(reads),1000)
-#	prob = (math.exp(-(rate*float(math.log(len(reads),100)))) * (((rate*float(math.log(len(reads),100))) ** float(kmer_min))/math.factorial(float(kmer_min))))
-#	return(ave_read_len, ave_kmer_prob, mu, prob, prob_mod)
-	
 
 def BarplotWithMatches(x, ydata, matches) :
 	plt.figure(figsize=(12,4+4))
@@ -332,8 +305,13 @@ def BuildLeftRightList(transcript) :
 			tmp_left.append(int(i - x.reference_start))
 			tmp_right.append(int(x.reference_end-i))  
 		return([np.mean(tmp_left), np.mean(tmp_right)]) 
-		
+
+	p = mp.ProcessPool(nodes=procs)	
 	means = p.map(SamIteration, range(0,samfile.get_reference_length(transcript)))
+	p.clear()
+	p.close()
+	p.join()
+    
 	for mean in means :
 		mean_left.append(mean[0])
 		mean_right.append(mean[1])		          
@@ -377,6 +355,7 @@ def CalcReadDiff(mean_left, mean_right, transcript) :
 
 
 def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
+	#start1 = time.time()
 	## collect x and y data for barplots and calculations
 	x = list(X[X['transcript'] == transcript]['pos'])
 	x = np.asarray(x)
@@ -399,6 +378,8 @@ def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
 	subsetDiff = CalcReadDiff(mean_left, mean_right, transcript)
 	## Test to see if differences are above threshold
 	TestandSavePlot(ydata, transcript, subsetDiff)
+	#end1 = time.time()
+	#print((end1 - start1))
 
 
 
@@ -414,26 +395,26 @@ name = input.name.split(".")[0]
 print(("Generating bwa alignment: " + name + ".bam"))
 # Build the bwa index
 command = bwa + " index " + input.name
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 # Generate the initial sam alignment
 command = bwa + " mem -M -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 # Create a sorted bam file
 command = picard + " SortSam INPUT=tmp1.sam OUTPUT=tmp2.bam SORT_ORDER=coordinate USE_JDK_DEFLATER=true USE_JDK_INFLATER=true" 
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 command = picard + " BuildBamIndex INPUT=tmp2.bam USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 # Remove overclipped reads
 command = picard + " CreateSequenceDictionary REFERENCE=" + input.name + " OUTPUT=" + input.name.split(".")[0] + ".dict USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 command = samtools + " faidx " + input.name
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 command = gatk + " PrintReads -R " + input.name + " -I tmp2.bam  -RF OverclippedReadFilter --filter-too-short " + str(tooShort) + " --dont-require-soft-clips-both-ends -RF MappingQualityReadFilter --minimum-mapping-quality " + str(mapQuality) + " -RF ReadLengthReadFilter --min-read-length " + str(minRead) + " --max-read-length " + str(maxRead) + " -O " + name + ".bam"
-subprocess.call(command,shell=True)
+#subprocess.call(command,shell=True)
 # Calculate coverage
 command = bedtools + " genomecov -d -ibam " + name + ".bam > coverage.txt"
-subprocess.call(command,shell=True)
-subprocess.call("rm tmp*[bs]a[im]",shell=True)
+#subprocess.call(command,shell=True)
+#subprocess.call("rm tmp*[bs]a[im]",shell=True)
 
 # Read in the coverage data
 print(("*"*100))
@@ -491,21 +472,28 @@ print(("*"*100))
 #########################################################
 ##This stuff is the working (as in in development) code.
 
+## we need to break our list of transcripts up into managable units for multiprocess.
+## So if the list is larger than 100 we break it into a list of lists with 100 transcripts
+if len(T) > 100:
+	breaker = int( len(T) / 100 )
+	T_list = []
+	for i in range(breaker):
+		start = (i * 100)
+		end = (start + 100)
+		if end > len(T):
+			end = len(T)
+		T_list.append(T[start:end])
 
+else:
+	T_list = [T]
 
 
 
 good_transcripts = []
-bad_transcripts = [] 
-for transcript in T:
-	TranscriptTest(transcript, T, S, merSize)
-
-
-
-
-
-
-
+bad_transcripts = []
+for T in T_list: 
+	for transcript in T:
+		TranscriptTest(transcript, T, S, merSize)
 
 
 
@@ -556,17 +544,3 @@ for seq in bad_seqs:
 end = time.time()
 print((end - start))
  
- 
- 
- 
- 
- ########################################################################################
- ######### In development code
- ########################################################################################
- 
-
-
-
-
- 
-                
