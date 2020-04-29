@@ -125,21 +125,21 @@ merSize=args.merSize
 procs=args.processes
 
 
-input=open("Bnigr-CLP1856_CDS_testing.fasta","r")
-mismatches=0
-bwa="bwa"
-reads=open("Bnigr-CLP1856_M.assembled.fastq.gz","r")
-picard="picard"
-samtools="samtools"
-bedtools="bedtools"
-tooShort=150
-mapQuality=0
-minRead=150
-maxRead=1000
-gatk="gatk"
-readDifference=0.75
-merSize=100
-procs=8
+#input=open("Bnigr-CLP1856_CDS_testing.fasta","r")
+#mismatches=0
+#bwa="bwa"
+#reads=open("Bnigr-CLP1856_M.assembled.fastq.gz","r")
+#picard="picard"
+#samtools="samtools"
+#bedtools="bedtools"
+#tooShort=150
+#mapQuality=0
+#minRead=150
+#maxRead=1000
+#gatk="gatk"
+#readDifference=0.75
+#merSize=100
+#procs=8
 
 
 
