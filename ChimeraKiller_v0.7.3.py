@@ -11,7 +11,7 @@
 # (6) pysam
 # (7) pathos
 import time
-start = time.time()
+time_start = time.time()
 
 import argparse
 import sys, os, shutil
@@ -541,6 +541,6 @@ for seq in bad_seqs:
 	writer.write_file(record)
 	handle.close()
  
-end = time.time()
-print((end - start))
+time_end = time.time()
+print((time_end - time_start))
  
