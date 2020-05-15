@@ -440,23 +440,14 @@ T = [x for x in T if x not in zeroBad]
  
 
 # Create a dictionary of all of the contigs.
+S = {}
 seqFile = open(input.name,"r")
-SeqList = []
 for seq in SeqIO.parse(seqFile,"fasta") :
-	SeqList.append(seq)
+	S[seq.description] = str(seq.seq)
 
 	
 seqFile.close()
 	
-for seq in SeqList :
-	if ' ' in seq.descripton:
-		seq.description = seq.description.split(' ')[0]
-
-		
-S = {}
-for seq in SeqList :
-    S[seq.description] = str(seq.seq)
-
 
 ## Read in bamfile
 samname = name + ".bam"    
