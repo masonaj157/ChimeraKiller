@@ -443,7 +443,7 @@ T = [x for x in T if x not in zeroBad]
 S = {}
 seqFile = open(input.name,"r")
 for seq in SeqIO.parse(seqFile,"fasta") :
-	S[seq.description] = str(seq.seq)
+	S[seq.id] = str(seq.seq)
 
 	
 seqFile.close()
