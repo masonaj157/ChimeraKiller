@@ -527,6 +527,7 @@ for seq in good_seqs:
 	record =[]
 	record.append(seq)
 	good_fasta = "fastas/good/" + seq.id + ".fasta"
+	#SeqIO.write(record, good_fasta, "fasta-2line")
 	handle=open(good_fasta, "w")
 	writer = FastaIO.FastaWriter(handle, wrap=None)
 	writer.write_file(record)
@@ -537,6 +538,7 @@ for seq in bad_seqs:
 	record =[]
 	record.append(seq)
 	bad_fasta = "fastas/bad/" + seq.id + ".fasta"
+	#SeqIO.write(record, bad_fasta, "fasta-2line")
 	handle=open(bad_fasta, "w")
 	writer = FastaIO.FastaWriter(handle, wrap=None)
 	writer.write_file(record)
