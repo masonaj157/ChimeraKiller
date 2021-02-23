@@ -3,7 +3,7 @@
 # ChimeraSorter was made as a followup to ChimeraChecker. It uses several filters to identify and sort filters into good and bad.
 
 # Additional software necessary to run this:
-# (1) bwa
+# (1) bwa 
 # (2) gatk
 # (3) samtools
 # (4) bedtools
@@ -47,12 +47,8 @@ parser.add_argument("-p","--processes",
 parser.add_argument("-b","--bwa",
                     nargs='?',
                     type=str,
-                    default="bwa",
+                    default="/usr/local/bin/bwa",
                     help="Path to bwa executable. Default assumes it is in your PATH.")
-parser.add_argument("--minimap2",
-                    action="store_true",
-                    default=False,
-                    help="Use minimap2 instead of bwa")
 parser.add_argument("-s","--samtools",
                     nargs='?',
                     type=str,
@@ -91,12 +87,12 @@ parser.add_argument("-max","--maxRead",
 parser.add_argument("-pi","--picard",
                     nargs='?',
                     type=str,
-                    default="picard",
+                    default="java -jar /path/picard.jar ",
                     help="Picard command. Something like: java -jar /PATH/TO/PICARD/picard.jar")
 parser.add_argument("-g","--gatk",
                     nargs='?',
                     type=str,
-                    default="gatk",
+                    default="java -jar /path/GenomeAnalysisTK.jar ",
                     help="GATK command. Some like: java -jar /PATH/TO/GATK/GenomeAnalysisTK.jar")
 parser.add_argument("-d","--readDifference",
 					nargs='?',
@@ -396,31 +392,20 @@ def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
 # Run the alignment
 grepNM = "grep -E 'NM:i:[0-" + str(mismatches) + "][[:space:]]|^@'"
 name = input.name.split(".")[0] 
-if args.minimap2:
-    print(("Generating minimap2 alignment: " + name + ".bam"))
-    subprocess.call("minimap2 -ax sr -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam", shell=True)
-else:
-    print(("Generating bwa alignment: " + name + ".bam"))
-    # Build the bwa index
-    command = bwa + " index " + input.name
-    subprocess.call(command,shell=True)
-    # Generate the initial sam alignment
-    command = bwa + " mem -M -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
-    subprocess.call(command,shell=True)
-
-# Create a sorted bam file
-
-### TRADED OUT PICARD WITH SAMTOOLS MULTITHREADED OPTIONS THAT DO THE SAME THING
-
-#command = picard + " SortSam INPUT=tmp1.sam OUTPUT=tmp2.bam SORT_ORDER=coordinate USE_JDK_DEFLATER=true USE_JDK_INFLATER=true" 
-command = samtools + " sort -@ " + str(procs) + " tmp1.sam > tmp2.bam"
+print(("Generating bwa alignment: " + name + ".bam"))
+# Build the bwa index
+command = bwa + " index " + input.name
 subprocess.call(command,shell=True)
-#command = picard + " BuildBamIndex INPUT=tmp2.bam USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
-command = samtools + " index -@ " + str(procs) + " tmp2.bam"
+# Generate the initial sam alignment
+command = bwa + " mem -M -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
+subprocess.call(command,shell=True)
+# Create a sorted bam file
+command = picard + " SortSam INPUT=tmp1.sam OUTPUT=tmp2.bam SORT_ORDER=coordinate USE_JDK_DEFLATER=true USE_JDK_INFLATER=true" 
+subprocess.call(command,shell=True)
+command = picard + " BuildBamIndex INPUT=tmp2.bam USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
 subprocess.call(command,shell=True)
 # Remove overclipped reads
-#command = picard + " CreateSequenceDictionary REFERENCE=" + input.name + " OUTPUT=" + input.name.split(".")[0] + ".dict USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
-command = samtools + " dict " + input.name + " > " + input.name.split(".")[0] + ".dict"
+command = picard + " CreateSequenceDictionary REFERENCE=" + input.name + " OUTPUT=" + input.name.split(".")[0] + ".dict USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
 subprocess.call(command,shell=True)
 command = samtools + " faidx " + input.name
 subprocess.call(command,shell=True)
@@ -443,28 +428,26 @@ subprocess.call("mkdir plots", shell=True)
 subprocess.call("mkdir plots/good", shell=True)
 subprocess.call("mkdir plots/bad", shell=True)
 subprocess.call("mkdir plots/bad_low", shell=True)
-#zeroBad = []
-
-print("Identifying transcripts with 0 coverage")
+zeroBad = []
 # Check for any sites with no coverage make list of these files
-zeroBad = set(list(X[X["cov"] == 0]["transcript"]))
-#for i in T :
-#    zeros = list(X[X['transcript'] == i]['cov']).count(0)
-#    if zeros :
-#        zeroBad.append(i)
-
-print("Removing " + str(len(zeroBad)) + " transcripts due to 0 coverage")
+for i in T :
+    zeros = list(X[X['transcript'] == i]['cov']).count(0)
+    if zeros :
+        zeroBad.append(i)
+        
 # Remove the contigs with zero coverage sites from the master list
-T = [x for x in T if x not in zeroBad]
+T = [x for x in T if x not in zeroBad]        
+ 
 
-print(("*"*100))
 # Create a dictionary of all of the contigs.
 S = {}
 seqFile = open(input.name,"r")
 for seq in SeqIO.parse(seqFile,"fasta") :
 	S[seq.id] = str(seq.seq)
 
+	
 seqFile.close()
+	
 
 ## Read in bamfile
 samname = name + ".bam"    
@@ -474,7 +457,7 @@ references = []
 for read in samfile:
 	references.append(read.reference_name)        
 	read_lengths.append(read.rlen)
-
+	
 
 read_mean = np.mean(read_lengths)
 Diff_cutoff = read_mean * readDifference
@@ -563,4 +546,4 @@ for seq in bad_seqs:
  
 time_end = time.time()
 print((time_end - time_start))
-
+ 
