@@ -424,13 +424,6 @@ command = samtools + " dict " + input.name + " > " + input.name.split(".")[0] + 
 subprocess.call(command,shell=True)
 command = samtools + " faidx " + input.name
 subprocess.call(command,shell=True)
-
-### CURRENTLY GATK OF MINIMAP2 BAM FILE FAILS, BUT MINIMAP2 WORKS FOR ALL OTHER PROCESSES ABOVE
-### AND GATK OF BWA BAM FILE WORKS EVEN WITH THE ABOVE PICARD > SAMTOOLS CHANGES
-### I'VE ADDED A FILE bwa_v_mm2.txt TO IDENTIFY DIFFERENCES BETWEEN THEM THAT MIGHT CAUSE 
-### GATK TO FAIL FOR MINIMAP2
-
-
 command = gatk + " PrintReads -R " + input.name + " -I tmp2.bam  -RF OverclippedReadFilter --filter-too-short " + str(tooShort) + " --dont-require-soft-clips-both-ends -RF MappingQualityReadFilter --minimum-mapping-quality " + str(mapQuality) + " -RF ReadLengthReadFilter --min-read-length " + str(minRead) + " --max-read-length " + str(maxRead) + " -O " + name + ".bam"
 subprocess.call(command,shell=True)
 # Calculate coverage
