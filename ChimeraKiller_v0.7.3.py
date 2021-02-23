@@ -398,7 +398,7 @@ grepNM = "grep -E 'NM:i:[0-" + str(mismatches) + "][[:space:]]|^@'"
 name = input.name.split(".")[0] 
 if args.minimap2:
     print(("Generating minimap2 alignment: " + name + ".bam"))
-    subprocess.call("minimap2 -ax sr -t " + str(procs) + " " + input.name + " " + reads.name + " | " + grepNM + " > tmp1.sam", shell=True)
+    subprocess.call("minimap2 -ax sr -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam", shell=True)
 else:
     print(("Generating bwa alignment: " + name + ".bam"))
     # Build the bwa index
