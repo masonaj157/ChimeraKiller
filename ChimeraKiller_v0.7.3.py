@@ -436,7 +436,7 @@ subprocess.call(command,shell=True)
 # Calculate coverage
 command = bedtools + " genomecov -d -ibam " + name + ".bam > coverage.txt"
 subprocess.call(command,shell=True)
-#subprocess.call("rm tmp*[bs]a[im]",shell=True)
+subprocess.call("rm tmp*[bs]a[im]",shell=True)
 
 # Read in the coverage data
 print(("*"*100))
