@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# ChimeraKiller was made as a followup to ChimeraChecker. It uses several filters to identify and sort filters into good and bad.
+# ChimeraSorter was made as a followup to ChimeraChecker. It uses several filters to identify and sort filters into good and bad.
 
 # Additional software necessary to run this:
-# (1) bwa
+# (1) bwa 
 # (2) gatk
 # (3) samtools
 # (4) bedtools
@@ -11,7 +11,7 @@
 # (6) pysam
 # (7) pathos
 import time
-time_start = time.time()
+start = time.time()
 
 import argparse
 import sys, os, shutil
@@ -35,79 +35,75 @@ import pathos.multiprocessing as mp
 # Set up and extract the command line options.
 parser = argparse.ArgumentParser(description='Automated checking of coding seqeuences for chimeric transcripts')
 parser.add_argument("-i","--input",
-					type=argparse.FileType('r'),
-					help="Fasta file of contigs to check. Use only CODING SEQUENCES.")
+                    type=argparse.FileType('r'),
+                    help="Fasta file of contigs to check. Use only CODING SEQUENCES.")
 parser.add_argument("-r","--reads",
-					type=argparse.FileType('r'),
-					help="Fastq file of UNPAIRED reads.")
+                    type=argparse.FileType('r'),
+                    help="Fastq file of UNPAIRED reads.")
 parser.add_argument("-p","--processes",
-					type=int,
-					default=4,
-					help="number of parallel processes")
+                    type=int,
+                    default=4,
+                    help="number of parallel processes")
 parser.add_argument("-b","--bwa",
-					nargs='?',
-					type=str,
-					default="bwa",
-					help="Path to bwa executable. Default assumes it is in your PATH.")
-parser.add_argument("--minimap2",
-					action="store_true",
-					default=False,
-					help="Use minimap2 instead of bwa")
+                    nargs='?',
+                    type=str,
+                    default="/usr/local/bin/bwa",
+                    help="Path to bwa executable. Default assumes it is in your PATH.")
 parser.add_argument("-s","--samtools",
-					nargs='?',
-					type=str,
-					default="samtools",
-					help="Path to samtools executable. Default assumes it is in your PATH.")
+                    nargs='?',
+                    type=str,
+                    default="samtools",
+                    help="Path to samtools executable. Default assumes it is in your PATH.")
 parser.add_argument("-bt","--bedtools",
-					nargs='?',
-					type=str,
-					default="bedtools",
-					help="Path to bedtools executable. Default assumes it is in your PATH.")
+                    nargs='?',
+                    type=str,
+                    default="bedtools",
+                    help="Path to bedtools executable. Default assumes it is in your PATH.")
 parser.add_argument("-m","--mismatches",
-					nargs='?',
-					type=int,
-					default=0,
-					help="Number of allowable mismatches to keep in alignment. The default is 0.")
+                    nargs='?',
+                    type=int,
+                    default=0,
+                    help="Number of allowable mismatches to keep in alignment. The default is 0.")
 parser.add_argument("-ts","--tooShort",
-					nargs='?',
-					type=int,
-					default=150,
-					help="Minimum length of clipped reads. Default is 150.")
+                    nargs='?',
+                    type=int,
+                    default=150,
+                    help="Minimum length of clipped reads. Default is 150.")
 parser.add_argument("-mq","--mapQuality",
-					nargs='?',
-					type=int,
-					default=0,
-					help="Minimum mapping quality. Default is 0. Note that reads with multiple mappings get assigned a quality of 0 by bwa.")
+                    nargs='?',
+                    type=int,
+                    default=0,
+                    help="Minimum mapping quality. Default is 0. Note that reads with multiple mappings get assigned a quality of 0 by bwa.")
 parser.add_argument("-min","--minRead",
-					nargs='?',
-					type=int,
-					default=150,
-					help="Minimum read length. Default is 150.")
+                    nargs='?',
+                    type=int,
+                    default=150,
+                    help="Minimum read length. Default is 150.")
 parser.add_argument("-max","--maxRead",
-					nargs='?',
-					type=int,
-					default=1000,
-					help="Maximum read length. Default is 1000.")
+                    nargs='?',
+                    type=int,
+                    default=1000,
+                    help="Maximum read length. Default is 1000.")
 parser.add_argument("-pi","--picard",
-					nargs='?',
-					type=str,
-					default="picard",
-					help="Picard command. Something like: java -jar /PATH/TO/PICARD/picard.jar")
+                    nargs='?',
+                    type=str,
+                    default="java -jar /path/picard.jar ",
+                    help="Picard command. Something like: java -jar /PATH/TO/PICARD/picard.jar")
 parser.add_argument("-g","--gatk",
-					nargs='?',
-					type=str,
-					default="gatk",
-					help="GATK command. Some like: java -jar /PATH/TO/GATK/GenomeAnalysisTK.jar")
+                    nargs='?',
+                    type=str,
+                    default="java -jar /path/GenomeAnalysisTK.jar ",
+                    help="GATK command. Some like: java -jar /PATH/TO/GATK/GenomeAnalysisTK.jar")
 parser.add_argument("-d","--readDifference",
 					nargs='?',
 					type=float,
 					default=0.75,
 					help="Value between 0 and 1 for the threshold for percentage difference between average lengths of reads on either side of a given site based on the average read size.  Transcripts with a site with a descrepancy between read lengths above this percent are removed based on the assumption that reads should be approximately evenly distributed across sites (example: for a given site, if the average number of bases per read to the left is 10 and the average number of bases per read to the right is 200, the difference between them is 190, which flags the transcript for removal. Default is 0.75")
 parser.add_argument("-mer","--merSize",
-					nargs='?',
-					type=int,
-					default=100,
-					help="Mer size for sequence comparisons. Default is 100.")
+                    nargs='?',
+                    type=int,
+                    default=100,
+                    help="Mer size for sequence comparisons. Default is 100.")
 args = parser.parse_args()
 
 
@@ -143,15 +139,14 @@ procs=args.processes
 #gatk="gatk"
 #readDifference=0.75
 #merSize=100
-#procs=8
-#name='test'
+#procs=4
 
-
+p = mp.Pool(procs)
 
 # Check the input fasta file and output the number of detected sequences.
 totalContigs = 0
 for seq in SeqIO.parse(input,format="fasta") :
-	totalContigs += 1
+    totalContigs += 1
 
 
 print(("Total number of input contigs = " + str(totalContigs)))
@@ -162,47 +157,47 @@ print(("*"*100))
 
 # Function to generate mers for a single sequence (character string)
 def MerSplit(merSize, seq) :
-	mers = []
-	if len(seq) < merSize : 
-		print(("Sequence length (" + str(len(seq)) + ") is less than mer size (" + str(merSize) + ")."))
-		sys.exit()
-	for i in range(0,len(seq)-merSize+1) :
-		mers.append(seq[i:i+merSize])
-	return mers
+    mers = []
+    if len(seq) < merSize : 
+        print(("Sequence length (" + str(len(seq)) + ") is less than mer size (" + str(merSize) + ")."))
+        sys.exit()
+    for i in range(0,len(seq)-merSize+1) :
+        mers.append(seq[i:i+merSize])
+    return mers
 
 
 # Function to identify exactly matching regions between two sequences
 # The return value will be a list of three-element lists, where the first element is a list of the starting and ending positions
 # in seqence 1, the second is a list for sequence 2, and the third is the actual sequence match.
 def ExactMatches(merSize,seq1,seq2) :
-	if len(seq1) < merSize or len(seq2) < merSize :
-		print(("Sequence length is less than mer size (" + str(merSize) + ")."))
-		sys.exit()
-	matches = []
-	seq1mers = MerSplit(merSize,seq1)
-	seq2mers = MerSplit(merSize,seq2)
-	i = 0
-	while i < len(seq1mers) :
-		if seq1mers[i] in seq2mers : 
-			match1 = [i,i+merSize]				# get seq1 coordinates for initial match
-			seq = seq1mers[i]					 # get initial match sequence
-			j = seq2mers.index(seq1mers[i])	   # get seq2 coordinates for initial match
-			match2 = [j,j+merSize]
-			i += 1
-			j += 1
-			while i < len(seq1mers) and j < len(seq2mers) and seq1mers[i] == seq2mers[j] :	# extend match while 2 sequences agree
-				match1[1] += 1
-				match2[1] += 1
-				seq += seq1mers[i][-1]
-				i += 1
-				j += 1
-			match1[1] += -1						# to correct for overstepping by one 
-			match2[1] += -1
-			matches.append([match1,match2,seq])
-		else :
-			i += 1
-			continue
-	return matches
+    if len(seq1) < merSize or len(seq2) < merSize :
+        print(("Sequence length is less than mer size (" + str(merSize) + ")."))
+        sys.exit()
+    matches = []
+    seq1mers = MerSplit(merSize,seq1)
+    seq2mers = MerSplit(merSize,seq2)
+    i = 0
+    while i < len(seq1mers) :
+        if seq1mers[i] in seq2mers : 
+            match1 = [i,i+merSize]                # get seq1 coordinates for initial match
+            seq = seq1mers[i]                     # get initial match sequence
+            j = seq2mers.index(seq1mers[i])       # get seq2 coordinates for initial match
+            match2 = [j,j+merSize]
+            i += 1
+            j += 1
+            while i < len(seq1mers) and j < len(seq2mers) and seq1mers[i] == seq2mers[j] :    # extend match while 2 sequences agree
+                match1[1] += 1
+                match2[1] += 1
+                seq += seq1mers[i][-1]
+                i += 1
+                j += 1
+            match1[1] += -1                       # to correct for overstepping by one 
+            match2[1] += -1
+            matches.append([match1,match2,seq])
+        else :
+            i += 1
+            continue
+    return matches
 
 
 
@@ -235,6 +230,33 @@ def SampleReads(transcript_name, transcript_dict, sample_number) :
 			sampled_reads.append(read)
 	return(sampled_reads)
 	
+	
+	
+## Function to calculate the average read length in a set of reads
+#def AverageReadLen(reads) :
+#	lengths = []
+#	for read in reads:
+#		lengths.append(len(read.seq))
+#	mean = sum(lengths)/len(reads)
+#	return(mean)
+
+
+
+## Function to calculate the probability that the lowest frequency kmer occurred randomly
+## As a result of a draw from a poisson distribution with rate and determined by assuming 
+## equal probability of each kmer in a sequence occurring in a randomly drawn read mapping to the sequence
+#def PoissonProbKmer(transcript_seq,kmer_min,kmer_len,reads) :
+#	len_transcript = float(len(transcript_seq))
+#	ave_read_len = float(AverageReadLen(reads))
+#	ave_kmer_prob = (1.0 / (len_transcript - (ave_read_len - 1.0 ))) * (ave_read_len - (kmer_len - 1.0 )) 
+#	events = ave_kmer_prob * 1.1 ** len(reads)
+#	mu = (events / len(reads)) * (len(reads)) # I recognize this is redundant 
+#	rate = ave_kmer_prob #should be frequency times number of reads divided by reads so reads cancels out
+#	pois = stats.poisson.cdf(kmer_min, ave_kmer_prob)
+#	prob = pois
+#	prob_mod = pois / math.log(len(reads),1000)
+#	prob = (math.exp(-(rate*float(math.log(len(reads),100)))) * (((rate*float(math.log(len(reads),100))) ** float(kmer_min))/math.factorial(float(kmer_min))))
+#	return(ave_read_len, ave_kmer_prob, mu, prob, prob_mod)
 	
 
 def BarplotWithMatches(x, ydata, matches) :
@@ -271,7 +293,7 @@ def BarplotWithoutMatches(x, ydata) :
 def SamIteration(i) :
 	## assumes transcript value will be initialized earlier in the loop
 	name = input.name.split(".")[0]
-	samname = name + ".bam"	
+	samname = name + ".bam"    
 	samfile = pysam.AlignmentFile(samname, "rb") 
 	samples = list(samfile.fetch(transcript, i, i+1))
 	#return(iter)
@@ -285,7 +307,7 @@ def SamIteration(i) :
 	for x in samples:
 		tmp_left.append(int(i - x.reference_start))
 		tmp_right.append(int(x.reference_end-i))  
-	return([np.mean(tmp_left), np.mean(tmp_right)])	
+	return([np.mean(tmp_left), np.mean(tmp_right)])    
 
 
 
@@ -296,7 +318,7 @@ def BuildLeftRightList(transcript) :
 	## this is so dumb, but it is how I have to do this because multiprocess needs to inherit transcript
 	def SamIteration(i) :
 		name = input.name.split(".")[0]
-		samname = name + ".bam"	
+		samname = name + ".bam"    
 		samfile = pysam.AlignmentFile(samname, "rb") 
 		samples = list(samfile.fetch(transcript, i, i+1))
 		tmp_left = []
@@ -310,16 +332,11 @@ def BuildLeftRightList(transcript) :
 			tmp_left.append(int(i - x.reference_start))
 			tmp_right.append(int(x.reference_end-i))  
 		return([np.mean(tmp_left), np.mean(tmp_right)]) 
-	
-	p = mp.ProcessPool(nodes=procs)	
+		
 	means = p.map(SamIteration, range(0,samfile.get_reference_length(transcript)))
-	p.clear()
-	p.close()
-	p.join()
-	
 	for mean in means :
 		mean_left.append(mean[0])
-		mean_right.append(mean[1])				  
+		mean_right.append(mean[1])		          
 	return(mean_left,mean_right)
 
 
@@ -360,14 +377,13 @@ def CalcReadDiff(mean_left, mean_right, transcript) :
 
 
 def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
-	#start1 = time.time()
 	## collect x and y data for barplots and calculations
 	x = list(X[X['transcript'] == transcript]['pos'])
 	x = np.asarray(x)
 	ydata = list(X[X['transcript'] == transcript]['cov'])
 	ydata = np.asarray(ydata)
 	## check for matching fragments in transcript
-	matches = FindMatches(transcript, transcript_list, transcript_dict, merSize)		   
+	matches = FindMatches(transcript, transcript_list , transcript_dict, merSize)           
 	## Build barplot for each transcript
 	if len(list(matches.keys())) == 0 or not len(list(matches.keys())) :
 		BarplotWithoutMatches(x, ydata)
@@ -383,13 +399,11 @@ def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
 	subsetDiff = CalcReadDiff(mean_left, mean_right, transcript)
 	## Test to see if differences are above threshold
 	TestandSavePlot(ydata, transcript, subsetDiff)
-	#end1 = time.time()
-	#print((end1 - start1))
 
 
 
 ##########################################################################################
-#################	 Start Actual Code
+#################     Start Actual Code
 ##########################################################################################
 
 ### This chunk is from Darin's ChimeraChecker
@@ -397,32 +411,25 @@ def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
 # Run the alignment
 grepNM = "grep -E 'NM:i:[0-" + str(mismatches) + "][[:space:]]|^@'"
 name = input.name.split(".")[0] 
-if args.minimap2:
-	print(("Generating minimap2 alignment: " + name + ".bam"))
-	subprocess.call("minimap2 -ax sr -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam", shell=True)
-else:
-	print(("Generating bwa alignment: " + name + ".bam"))
-	# Build the bwa index
-	command = bwa + " index " + input.name
-	subprocess.call(command,shell=True)
-	# Generate the initial sam alignment
-	command = bwa + " mem -M -t " + str(procs) + " -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
-	subprocess.call(command,shell=True)
-
+print(("Generating bwa alignment: " + name + ".bam"))
+# Build the bwa index
+command = bwa + " index " + input.name
+subprocess.call(command,shell=True)
+# Generate the initial sam alignment
+command = bwa + " mem -M -t 4 -R \'@RG\\tID:" + input.name + "\\tSM:" + reads.name + "' " + input.name + " " + reads.name + " | " + grepNM  + " > tmp1.sam"
+subprocess.call(command,shell=True)
 # Create a sorted bam file
-command = samtools + " sort -@ " + str(procs) + " tmp1.sam > tmp2.bam"
+command = picard + " SortSam INPUT=tmp1.sam OUTPUT=tmp2.bam SORT_ORDER=coordinate USE_JDK_DEFLATER=true USE_JDK_INFLATER=true" 
 subprocess.call(command,shell=True)
-command = samtools + " index -@ " + str(procs) + " tmp2.bam"
+command = picard + " BuildBamIndex INPUT=tmp2.bam USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
 subprocess.call(command,shell=True)
-
 # Remove overclipped reads
-command = samtools + " dict " + input.name + " > " + input.name.split(".")[0] + ".dict"
+command = picard + " CreateSequenceDictionary REFERENCE=" + input.name + " OUTPUT=" + input.name.split(".")[0] + ".dict USE_JDK_DEFLATER=true USE_JDK_INFLATER=true"
 subprocess.call(command,shell=True)
 command = samtools + " faidx " + input.name
 subprocess.call(command,shell=True)
 command = gatk + " PrintReads -R " + input.name + " -I tmp2.bam  -RF OverclippedReadFilter --filter-too-short " + str(tooShort) + " --dont-require-soft-clips-both-ends -RF MappingQualityReadFilter --minimum-mapping-quality " + str(mapQuality) + " -RF ReadLengthReadFilter --min-read-length " + str(minRead) + " --max-read-length " + str(maxRead) + " -O " + name + ".bam"
 subprocess.call(command,shell=True)
-
 # Calculate coverage
 command = bedtools + " genomecov -d -ibam " + name + ".bam > coverage.txt"
 subprocess.call(command,shell=True)
@@ -435,37 +442,40 @@ X = pd.read_csv("coverage.txt",sep='\t',names=['transcript','pos','cov'])
 print(("Identified coverage data for " + str(len(set(X['transcript']))) + " transcripts."))
 T = list(set(X['transcript']))
 
+print(("*"*100))
 subprocess.call("mkdir plots", shell=True)
 subprocess.call("mkdir plots/good", shell=True)
 subprocess.call("mkdir plots/bad", shell=True)
 subprocess.call("mkdir plots/bad_low", shell=True)
-
+zeroBad = []
 # Check for any sites with no coverage make list of these files
-print(("*"*100))
-print("Identifying transcripts with 0 coverage")
-zeroBad = set(list(X[X["cov"] == 0]["transcript"]))
-
+for i in T :
+    zeros = list(X[X['transcript'] == i]['cov']).count(0)
+    if zeros :
+        zeroBad.append(i)
+        
 # Remove the contigs with zero coverage sites from the master list
-print("Removing " + str(len(zeroBad)) + " transcripts due to 0 coverage sites")
-T = [x for x in T if x not in zeroBad]
-print(("*"*100))
+T = [x for x in T if x not in zeroBad]        
+ 
 
 # Create a dictionary of all of the contigs.
-S = {}
 seqFile = open(input.name,"r")
+S = {}
 for seq in SeqIO.parse(seqFile,"fasta") :
-	S[seq.id] = str(seq.seq)
+    S[seq.description] = str(seq.seq)
 
 seqFile.close()
 
+
 ## Read in bamfile
-samname = name + ".bam"	
-samfile = pysam.AlignmentFile(samname, "rb")		
+samname = name + ".bam"    
+samfile = pysam.AlignmentFile(samname, "rb")        
 read_lengths = []
 references = []
 for read in samfile:
-	references.append(read.reference_name)		
+	references.append(read.reference_name)        
 	read_lengths.append(read.rlen)
+	
 
 read_mean = np.mean(read_lengths)
 Diff_cutoff = read_mean * readDifference
@@ -473,87 +483,90 @@ print(("Average read size is " + str(read_mean)))
 print(("Looking for sites with difference in average read distribution greater than " + str(Diff_cutoff)))
 print(("*"*100))
 
+	
 print("Starting transcript filtering")
 print(("*"*100))
+
 
 #########################################################
 ##This stuff is the working (as in in development) code.
 
-## we need to break our list of transcripts up into managable units for multiprocess.
-## So if the list is larger than 100 we break it into a list of lists with 100 transcripts
-if len(T) > 100:
-	breaker = int( len(T) / 100 )
-	T_list = []
-	for i in range(breaker):
-		start = (i * 100)
-		end = (start + 100)
-		if end > len(T):
-			end = len(T)
-		T_list.append(T[start:end])
-else:
-	T_list = [T]
+
+
+
 
 good_transcripts = []
-bad_transcripts = []
+bad_transcripts = [] 
+for transcript in T:
+	TranscriptTest(transcript, T, S, merSize)
 
-for T in T_list:
-	for transcript in T:
-		TranscriptTest(transcript, T, S, merSize)
 
-print((str(len(good_transcripts)) + " sequences being written to fastas/good"))
-print((str(len(bad_transcripts)) + " sequences being written to fastas/bad"))
+
+
+
+
+
+
+
+
+		
+print((str(len(good_transcripts)) + " sequences being written to good.fasta"))
+print((str(len(bad_transcripts)) + " sequences being written to bad.fasta"))
 
 sequences = list(SeqIO.parse(input.name,"fasta"))
+
+good_seqs=[]
+for seq in sequences:
+	for good in good_transcripts:
+		if seq.id == good:
+			good_seqs.append(seq)
+
+
+bad_seqs=[]
+for seq in sequences:
+	for bad in bad_transcripts:
+		if seq.id == bad:
+			bad_seqs.append(seq)
+			
 
 print(("*"*100))
 subprocess.call("mkdir fastas", shell=True)
 subprocess.call("mkdir fastas/good", shell=True)
 subprocess.call("mkdir fastas/bad", shell=True)
 
-for seq in sequences:
-	if seq.id in good_transcripts:
-		fasta = "fastas/good/" + seq.id + ".fasta"
-	if seq.id in bad_transcripts:
-		fasta = "fastas/bad/" + seq.id + ".fasta"
-	
-	record = []
+for seq in good_seqs:
+	record =[]
 	record.append(seq)
-	handle=open(fasta, "w")
+	good_fasta = "fastas/good/" + seq.id + ".fasta"
+	handle=open(good_fasta, "w")
 	writer = FastaIO.FastaWriter(handle, wrap=None)
 	writer.write_file(record)
 	handle.close()
+	
+	
+for seq in bad_seqs:
+	record =[]
+	record.append(seq)
+	bad_fasta = "fastas/bad/" + seq.id + ".fasta"
+	handle=open(bad_fasta, "w")
+	writer = FastaIO.FastaWriter(handle, wrap=None)
+	writer.write_file(record)
+	handle.close()
+ 
+end = time.time()
+print((end - start))
+ 
+ 
+ 
+ 
+ 
+ ########################################################################################
+ ######### In development code
+ ########################################################################################
+ 
 
-#good_seqs=[]
-#bad_seqs=[]
-#for seq in sequences:
-#	for good in good_transcripts:
-#		if seq.id == good:
-#			good_seqs.append(seq)
 
-#for seq in sequences:
-#	for bad in bad_transcripts:
-#		if seq.id == bad:
-#			bad_seqs.append(seq)
 
-#for seq in good_seqs:
-#	record =[]
-#	record.append(seq)
-#	good_fasta = "fastas/good/" + seq.id + ".fasta"
-#	#SeqIO.write(record, good_fasta, "fasta-2line")
-#	handle=open(good_fasta, "w")
-#	writer = FastaIO.FastaWriter(handle, wrap=None)
-#	writer.write_file(record)
-#	handle.close()
 
-#for seq in bad_seqs:
-#	record =[]
-#	record.append(seq)
-#	bad_fasta = "fastas/bad/" + seq.id + ".fasta"
-#	#SeqIO.write(record, bad_fasta, "fasta-2line")
-#	handle=open(bad_fasta, "w")
-#	writer = FastaIO.FastaWriter(handle, wrap=None)
-#	writer.write_file(record)
-#	handle.close()
-
-time_end = time.time()
-print((time_end - time_start))
+ 
+                
