@@ -392,7 +392,7 @@ def TranscriptTest(transcript, transcript_list, transcript_dict, merSize) :
 #################	 Start Actual Code
 ##########################################################################################
 
-### This chunk is from Darin's ChimeraChecker
+### This chunk is from a precursor script ChimeraChecker
 
 # Run the alignment
 grepNM = "grep -E 'NM:i:[0-" + str(mismatches) + "][[:space:]]|^@'"
