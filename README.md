@@ -14,7 +14,7 @@ conda activate chimerakiller_env
 ## What does ChimeraKiller do?
 ChimeraKiller was written with the goal of providing a quality control and filtering step for de novo assembled transcriptomes generated from short read illumina data. ChimeraKiler primarily works by assessing read mapping of the reference's raw reads against the transcript set to attempt to identify likely misassembled and/or chimeric transcripts. It then filters these sequences into 'good', 'bad', and 'bad_low' folders based on failed filters and read coverage. ChimeraKiller will also output PDF coverage plots for each sequence which can be viewed by the user to observationally evaluate and correct ChimeraKiller's sorting if they wish.
 
-ChimerKillers procedure is as follows:
+ChimeraKiller's protocol is as follows:
 
 In the first step, reads are mapped to the transcripts with BWA or, more recently, minimap2. After read mapping, reads are filtered with samtoools and gatk such that only those with an allowable number of mismatches are kept (the default 0 mismatches). Coverage is then calculated weith bedtools for every site in the set of transcripts. 
 
