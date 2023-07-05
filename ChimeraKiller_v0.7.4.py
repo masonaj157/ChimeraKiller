@@ -515,7 +515,8 @@ for seq in sequences:
 		fasta = "fastas/good/" + seq.id + ".fasta"
 	if seq.id in bad_transcripts:
 		fasta = "fastas/bad/" + seq.id + ".fasta"
-	
+	else:
+		fasta = "fastas/undetermined/" + seq.id + "fasta"
 	record = []
 	record.append(seq)
 	handle=open(fasta, "w")
@@ -523,37 +524,6 @@ for seq in sequences:
 	writer.write_file(record)
 	handle.close()
 
-#good_seqs=[]
-#bad_seqs=[]
-#for seq in sequences:
-#	for good in good_transcripts:
-#		if seq.id == good:
-#			good_seqs.append(seq)
-
-#for seq in sequences:
-#	for bad in bad_transcripts:
-#		if seq.id == bad:
-#			bad_seqs.append(seq)
-
-#for seq in good_seqs:
-#	record =[]
-#	record.append(seq)
-#	good_fasta = "fastas/good/" + seq.id + ".fasta"
-#	#SeqIO.write(record, good_fasta, "fasta-2line")
-#	handle=open(good_fasta, "w")
-#	writer = FastaIO.FastaWriter(handle, wrap=None)
-#	writer.write_file(record)
-#	handle.close()
-
-#for seq in bad_seqs:
-#	record =[]
-#	record.append(seq)
-#	bad_fasta = "fastas/bad/" + seq.id + ".fasta"
-#	#SeqIO.write(record, bad_fasta, "fasta-2line")
-#	handle=open(bad_fasta, "w")
-#	writer = FastaIO.FastaWriter(handle, wrap=None)
-#	writer.write_file(record)
-#	handle.close()
 
 time_end = time.time()
 print((time_end - time_start))
