@@ -517,6 +517,7 @@ for seq in sequences:
 		fasta = "fastas/bad/" + seq.id + ".fasta"
 	else:
 		fasta = "fastas/undetermined/" + seq.id + "fasta"
+		subprocess.call("mkdir fastas/undetermined", shell=True)
 	record = []
 	record.append(seq)
 	handle=open(fasta, "w")
