@@ -15,7 +15,7 @@ ChimeraKiller was written with the goal of providing a quality control and filte
 
 ChimeraKiller's protocol is as follows:
 
-In the first step, reads are mapped to the transcripts with BWA or, more recently, minimap2. After read mapping, reads are filtered with samtoools and gatk such that only those with an allowable number of mismatches are kept (the default 0 mismatches). Coverage is then calculated weith bedtools for every site in the set of transcripts. 
+In the first step, reads are mapped to the transcripts with BWA or, more recently, minimap2. After read mapping, reads are filtered with samtoools and gatk such that only those with an allowable number of mismatches are kept (the default number of 0 mismatches). Coverage is then calculated with bedtools for every site in the set of transcripts. 
 
 The first filtering step is based on coverage criteria. Any transcripts with sites that have 0 coverage are identified as 'bad' and sorted accordingly. If the defaults are used, this will identify any transcript without an exact read match across its full length as 'bad'. The logic here being that the sequence cannot be reliable if it cannot be unambiguously assembled by the available reads.
 
